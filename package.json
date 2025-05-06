@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsc -b --watch --incremental & vite build --watch",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/fira-sans": "^5.2.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vite-plugin-static-copy": "^2.3.1"

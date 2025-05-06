@@ -1,7 +1,41 @@
 @import "tailwindcss";
+@import "@fontsource/fira-sans/300.css"; /* Light */
+@import "@fontsource/fira-sans/400.css"; /* Regular */
+@import "@fontsource/fira-sans/700.css"; /* Bold */
+@import "@fontsource/fira-sans/800.css"; /* Extra-Bold */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-themeGreen: #51a485;
+  --color-themeGreenVariant: #56d2a2;
+  --color-themeOrange: #f58971;
+  --color-themeYellow: #ffcb5c;
+  --color-themeWhite: #fffafa;
+  --color-themePink: #ea5d7b;
+  --color-themeBrown: #402720;
+  --color-themePrimary: #ea5b75;
+  --color-themeSecondary: #00c2c6;
+  --color-themePrimary: #ea5b75;
+  --color-themeSecondary: #00c2c6;
+  --color-themeContrast2: #058ea0;
+  --color-themeBackground: #054c6f;
+  --color-darkThemePrimary: #ff84dc;
+  --color-darkThemeSecondary: #eb60c4;
+  --color-darkThemeAnchorFrom: #dc0128;
+  --color-darkThemeAnchorTo: #73183f;
+  --font-header: "Fira Sans", sans-serif;
+  --font-body:
+    "Fira Sans", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "system-ui",
+    "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif",
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+html, body {
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

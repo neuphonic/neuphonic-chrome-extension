@@ -5,7 +5,7 @@ import './App.css';
 function App() {
   return (
     <>
-      <div className='flex flex-col'>
+      <div className='flex flex-col bg-white'>
         <div className='flex flex-row'>
           <div>
             <h1>Neuphonic Reader</h1>
@@ -17,7 +17,7 @@ function App() {
             <p>X</p>
           </div>
         </div>
-        <div>1</div>
+        <div>Adnan</div>
         <div>2</div>
       </div>
     </>
