@@ -1,6 +1,6 @@
 // import reactLogo from './assets/react.svg';
 // import viteLogo from '/vite.svg';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
 import { FiLoader, FiMessageCircle } from 'react-icons/fi';
 import { IoClose, IoSettingsOutline } from 'react-icons/io5';
@@ -34,8 +34,36 @@ export function useDarkMode() {
   }, []);
 }
 
+const useHighlightedText = () => {
+  const [highlightedText, setHighlightedText] = useState<string>('');
+
+  useEffect(() => {
+    // Get initial value
+    chrome.storage.local.get(['highlightedText'], (result) => {
+      setHighlightedText(result.highlightedText || '');
+    });
+
+    // Listen for changes
+    const handleStorageChange = (changes: any) => {
+      if (changes.highlightedText) {
+        setHighlightedText(changes.highlightedText.newValue || '');
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    // Cleanup
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
+
+  return highlightedText;
+};
+
 function App() {
   useDarkMode();
+  const highlightedText = useHighlightedText();
 
   return (
     <div className='w-[375px] overflow-hidden border border-gray-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800'>
@@ -63,6 +91,7 @@ function App() {
       </div>
 
       {/* Main Content */}
+      <p>{highlightedText}</p>
       <div>
         {/* Read Aloud Option */}
         <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
