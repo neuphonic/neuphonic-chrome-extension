@@ -1,11 +1,8 @@
-// import reactLogo from './assets/react.svg';
-// import viteLogo from '/vite.svg';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
 import { FiLoader, FiMessageCircle } from 'react-icons/fi';
 import { IoArrowBack, IoClose, IoSettingsOutline } from 'react-icons/io5';
-import './App.css';
 
 export function useDarkMode() {
   useEffect(() => {
@@ -68,10 +65,61 @@ const useHighlightedText = () => {
 
 type Page = 'home' | 'settings';
 
+// Add types for settings
+type Settings = {
+  language: string;
+  voice: string;
+  apiKey: string;
+};
+
+// Add default settings
+const DEFAULT_SETTINGS: Settings = {
+  language: 'en',
+  voice: 'voice1',
+  apiKey: '',
+};
+
 function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
   const [currentPage, setCurrentPage] = useState<Page>('home');
+
+  // Add settings state
+  const [currentSettings, setCurrentSettings] =
+    useState<Settings>(DEFAULT_SETTINGS);
+  const [lastSavedSettings, setLastSavedSettings] =
+    useState<Settings>(DEFAULT_SETTINGS);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Load settings from storage on mount
+  useEffect(() => {
+    chrome.storage.local.get(['settings'], (result) => {
+      if (result.settings) {
+        setCurrentSettings(result.settings);
+        setLastSavedSettings(result.settings);
+      }
+    });
+  }, []);
+
+  // Handle settings changes
+  const handleSettingChange = (key: keyof Settings, value: string) => {
+    setCurrentSettings((prev) => ({ ...prev, [key]: value }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Save settings to storage
+  const handleSave = () => {
+    chrome.storage.local.set({ settings: currentSettings }, () => {
+      setLastSavedSettings(currentSettings);
+      setHasUnsavedChanges(false);
+    });
+  };
+
+  // Reset settings to last saved state
+  const handleReset = () => {
+    setCurrentSettings(lastSavedSettings);
+    setHasUnsavedChanges(false);
+  };
 
   // Function to format highlighted text for display
   const formatHighlightedText = (text: string) => {
@@ -170,6 +218,8 @@ function App() {
           </label>
           <select
             id='language'
+            value={currentSettings.language}
+            onChange={(e) => handleSettingChange('language', e.target.value)}
             className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
           >
             <option value='en'>English</option>
@@ -188,6 +238,8 @@ function App() {
           </label>
           <select
             id='voice'
+            value={currentSettings.voice}
+            onChange={(e) => handleSettingChange('voice', e.target.value)}
             className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
           >
             <option value='voice1'>Voice 1 (Female)</option>
@@ -207,9 +259,31 @@ function App() {
           <input
             type='password'
             id='apiKey'
+            value={currentSettings.apiKey}
+            onChange={(e) => handleSettingChange('apiKey', e.target.value)}
             className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
             placeholder='Enter your API key'
           />
+        </div>
+
+        <div className='flex justify-end space-x-3 pt-4'>
+          <button
+            onClick={handleReset}
+            className='rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'
+          >
+            Reset
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!hasUnsavedChanges}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+              hasUnsavedChanges
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'cursor-not-allowed bg-gray-400'
+            }`}
+          >
+            Save Changes
+          </button>
         </div>
       </div>
     </motion.div>
