@@ -38,6 +38,29 @@ export function useNeuphonic() {
   const [apiKey, setApiKey] = useState<string>('');
   const [error, setError] = useState<string>('');
 
+  // Helper function to update voices and language codes
+  const updateVoicesAndLangCodes = (voicesList: Voice[]) => {
+    setVoices(voicesList);
+    const uniqueLangCodes = Array.from(
+      new Set(voicesList.map((voice: Voice) => voice.lang_code))
+    ) as string[];
+    setLangCodes(uniqueLangCodes);
+  };
+
+  // Helper function to load voices from cache
+  const loadVoicesFromCache = () => {
+    chrome.storage.local.get(['cachedVoices'], (result) => {
+      if (result.cachedVoices) {
+        updateVoicesAndLangCodes(result.cachedVoices);
+      }
+    });
+  };
+
+  // Load voices from storage on mount
+  useEffect(() => {
+    loadVoicesFromCache();
+  }, []);
+
   // Get API key from storage
   useEffect(() => {
     chrome.storage.local.get(['settings'], (result) => {
@@ -52,7 +75,15 @@ export function useNeuphonic() {
         changes.settings?.newValue?.apiKey !==
         changes.settings?.oldValue?.apiKey
       ) {
-        setApiKey(changes.settings.newValue.apiKey);
+        const newApiKey = changes.settings.newValue.apiKey;
+        setApiKey(newApiKey);
+
+        // If API key is deleted, clear cached voices
+        if (!newApiKey) {
+          chrome.storage.local.remove(['cachedVoices']);
+          setVoices([]);
+          setLangCodes([]);
+        }
       }
     };
 
@@ -65,7 +96,10 @@ export function useNeuphonic() {
 
   // Create new client and fetch voices when API key changes
   useEffect(() => {
-    if (!apiKey) return;
+    if (!apiKey) {
+      loadVoicesFromCache();
+      return;
+    }
 
     const newClient = createClient({ apiKey });
     setClient(newClient);
@@ -73,18 +107,14 @@ export function useNeuphonic() {
     const fetchVoices = async () => {
       try {
         const voicesList = await newClient.voices.list();
-        setVoices(voicesList);
+        updateVoicesAndLangCodes(voicesList);
         setError('');
 
-        // Extract unique language codes
-        const uniqueLangCodes = Array.from(
-          new Set(voicesList.map((voice: any) => voice.lang_code))
-        );
-        setLangCodes(uniqueLangCodes);
+        // Save voices to local storage
+        chrome.storage.local.set({ cachedVoices: voicesList });
       } catch (error) {
         setError('Please enter a valid API Key');
-        setVoices([]);
-        setLangCodes([]);
+        loadVoicesFromCache();
       }
     };
 
@@ -157,7 +187,7 @@ function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
   const [currentPage, setCurrentPage] = useState<Page>('settings');
-  const { client: neuphonicClient, voices, langCodes, error } = useNeuphonic();
+  const { voices, langCodes, error } = useNeuphonic();
 
   // Add settings state
   const [currentSettings, setCurrentSettings] =
