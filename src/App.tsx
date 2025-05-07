@@ -82,7 +82,7 @@ const DEFAULT_SETTINGS: Settings = {
 function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [currentPage, setCurrentPage] = useState<Page>('settings');
 
   // Add settings state
   const [currentSettings, setCurrentSettings] =
@@ -212,41 +212,63 @@ function App() {
         <div>
           <label
             htmlFor='language'
-            className='mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'
+            className='mb-1 block text-sm text-gray-700 dark:text-gray-300'
           >
             Language
           </label>
-          <select
-            id='language'
-            value={currentSettings.language}
-            onChange={(e) => handleSettingChange('language', e.target.value)}
-            className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
-          >
-            <option value='en'>English</option>
-            <option value='es'>Spanish</option>
-            <option value='fr'>French</option>
-            <option value='de'>German</option>
-          </select>
+          <div className='relative'>
+            <select
+              id='language'
+              value={currentSettings.language}
+              onChange={(e) => handleSettingChange('language', e.target.value)}
+              className='w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200'
+            >
+              <option value='en'>English</option>
+              <option value='es'>Spanish</option>
+              <option value='fr'>French</option>
+              <option value='de'>German</option>
+            </select>
+            <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2'>
+              <svg
+                className='h-4 w-4 fill-current text-gray-500'
+                xmlns='http://www.w3.org/2000/svg'
+                viewBox='0 0 20 20'
+              >
+                <path d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' />
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div>
           <label
             htmlFor='voice'
-            className='mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300'
+            className='mb-1 block text-sm text-gray-700 dark:text-gray-300'
           >
             Voice ID
           </label>
-          <select
-            id='voice'
-            value={currentSettings.voice}
-            onChange={(e) => handleSettingChange('voice', e.target.value)}
-            className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
-          >
-            <option value='voice1'>Voice 1 (Female)</option>
-            <option value='voice2'>Voice 2 (Male)</option>
-            <option value='voice3'>Voice 3 (Female)</option>
-            <option value='voice4'>Voice 4 (Male)</option>
-          </select>
+          <div className='relative'>
+            <select
+              id='voice'
+              value={currentSettings.voice}
+              onChange={(e) => handleSettingChange('voice', e.target.value)}
+              className='w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200'
+            >
+              <option value='voice1'>Voice 1 (Female)</option>
+              <option value='voice2'>Voice 2 (Male)</option>
+              <option value='voice3'>Voice 3 (Female)</option>
+              <option value='voice4'>Voice 4 (Male)</option>
+            </select>
+            <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2'>
+              <svg
+                className='h-4 w-4 fill-current text-gray-500'
+                xmlns='http://www.w3.org/2000/svg'
+                viewBox='0 0 20 20'
+              >
+                <path d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' />
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -261,7 +283,7 @@ function App() {
             id='apiKey'
             value={currentSettings.apiKey}
             onChange={(e) => handleSettingChange('apiKey', e.target.value)}
-            className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
+            className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200'
             placeholder='Enter your API key'
           />
         </div>
@@ -278,7 +300,7 @@ function App() {
             disabled={!hasUnsavedChanges}
             className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
               hasUnsavedChanges
-                ? 'bg-blue-600 hover:bg-blue-700'
+                ? 'text-button'
                 : 'cursor-not-allowed bg-gray-400'
             }`}
           >

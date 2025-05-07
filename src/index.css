@@ -63,6 +63,31 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Text Button Styles */
+.text-button {
+  background-color: var(--color-themeContrast2);
+  color: white;
+}
+
+.text-button:hover {
+  background-color: var(--color-themeSecondary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .text-button {
+    background-color: var(--color-darkThemeSecondary);
+    color: white;
+  }
+  
+  .text-button:hover {
+    background-color: var(--color-darkThemePrimary);
+  }
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
