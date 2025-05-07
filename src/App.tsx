@@ -34,6 +34,10 @@ export function useDarkMode() {
   }, []);
 }
 
+/**
+ * Hook that retrieves and subscribes to the user's highlighted text.
+ * @returns {string} The current highlighted text
+ */
 const useHighlightedText = () => {
   const [highlightedText, setHighlightedText] = useState<string>('');
 
@@ -65,6 +69,17 @@ function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
 
+  // Function to format highlighted text for display
+  const formatHighlightedText = (text: string) => {
+    if (!text) return '';
+    if (text.length <= 50) return text;
+
+    const words = text.split(' ');
+    if (words.length <= 8) return text;
+
+    return `${words.slice(0, 3).join(' ')} ... ${words.slice(-3).join(' ')}`;
+  };
+
   return (
     <div className='w-[375px] overflow-hidden border border-gray-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800'>
       {/* Header */}
@@ -91,7 +106,6 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <p>{highlightedText}</p>
       <div>
         {/* Read Aloud Option */}
         <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
@@ -150,14 +164,22 @@ function App() {
           </div> */}
         </div>
 
-        {/* Activate Button */}
-        <div className='flex flex-col items-center p-4'>
-          {/* <button className='bg-themeContrast2 hover:bg-themeSecondary dark:bg-darkThemeSecondary dark:hover:bg-darkThemePrimary mb-2 w-full rounded-full px-6 py-3 text-base font-semibold text-white'>
-            Activate
-          </button> */}
-          <div className='text-center text-xs text-gray-500'>
-            <span>Powered by Neuphonic</span>
+        {/* Highlighted Text Preview */}
+        {highlightedText && (
+          <div className='border-b border-gray-200 p-4 dark:border-neutral-700'>
+            <p className='text-sm text-gray-700 italic dark:text-gray-300'>
+              "{formatHighlightedText(highlightedText)}"
+            </p>
           </div>
+        )}
+
+        <div className='p-4 text-center'>
+          <span className='text-xs text-gray-500'>
+            Powered by{' '}
+            <a target='_blank' href='https://neuphonic.com'>
+              Neuphonic
+            </a>
+          </span>
         </div>
       </div>
     </div>
