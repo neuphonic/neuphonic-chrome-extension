@@ -1,9 +1,98 @@
+import type { Voice } from '@neuphonic/neuphonic-js';
+import { createClient } from '@neuphonic/neuphonic-js';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
 import { FiLoader, FiMessageCircle } from 'react-icons/fi';
 import { IoArrowBack, IoClose, IoSettingsOutline } from 'react-icons/io5';
 import { MdKeyboardArrowDown, MdOpenInNew } from 'react-icons/md';
+
+type Page = 'home' | 'settings';
+
+type Settings = {
+  language: string;
+  voice: Partial<Voice>;
+  apiKey: string;
+};
+
+// Add default settings
+const DEFAULT_SETTINGS: Settings = {
+  language: 'en',
+  voice: {
+    voice_id: 'fc854436-2dac-4d21-aa69-ae17b54e98eb',
+    name: 'Emily',
+  },
+  apiKey: '',
+};
+
+/**
+ * Hook that creates and returns a Neuphonic client with the user's API key.
+ * Also fetches and returns available voices and language codes.
+ */
+export function useNeuphonic() {
+  const [client, setClient] = useState<ReturnType<typeof createClient> | null>(
+    null
+  );
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [langCodes, setLangCodes] = useState<string[]>([]);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  // Get API key from storage
+  useEffect(() => {
+    chrome.storage.local.get(['settings'], (result) => {
+      if (result.settings?.apiKey) {
+        setApiKey(result.settings.apiKey);
+      }
+    });
+
+    // Listen for changes to settings
+    const handleStorageChange = (changes: any) => {
+      if (
+        changes.settings?.newValue?.apiKey !==
+        changes.settings?.oldValue?.apiKey
+      ) {
+        setApiKey(changes.settings.newValue.apiKey);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
+
+  // Create new client and fetch voices when API key changes
+  useEffect(() => {
+    if (!apiKey) return;
+
+    const newClient = createClient({ apiKey });
+    setClient(newClient);
+
+    const fetchVoices = async () => {
+      try {
+        const voicesList = await newClient.voices.list();
+        setVoices(voicesList);
+        setError('');
+
+        // Extract unique language codes
+        const uniqueLangCodes = Array.from(
+          new Set(voicesList.map((voice: any) => voice.lang_code))
+        );
+        setLangCodes(uniqueLangCodes);
+      } catch (error) {
+        setError('Please enter a valid API Key');
+        setVoices([]);
+        setLangCodes([]);
+      }
+    };
+
+    fetchVoices();
+  }, [apiKey]);
+
+  return { client, voices, langCodes, error };
+}
 
 export function useDarkMode() {
   useEffect(() => {
@@ -64,26 +153,11 @@ const useHighlightedText = () => {
   return highlightedText;
 };
 
-type Page = 'home' | 'settings';
-
-// Add types for settings
-type Settings = {
-  language: string;
-  voice: string;
-  apiKey: string;
-};
-
-// Add default settings
-const DEFAULT_SETTINGS: Settings = {
-  language: 'en',
-  voice: 'voice1',
-  apiKey: '',
-};
-
 function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
   const [currentPage, setCurrentPage] = useState<Page>('settings');
+  const { client: neuphonicClient, voices, langCodes, error } = useNeuphonic();
 
   // Add settings state
   const [currentSettings, setCurrentSettings] =
@@ -103,7 +177,10 @@ function App() {
   }, []);
 
   // Handle settings changes
-  const handleSettingChange = (key: keyof Settings, value: string) => {
+  const handleSettingChange = (
+    key: keyof Settings,
+    value: string | Partial<Voice>
+  ) => {
     setCurrentSettings((prev) => ({ ...prev, [key]: value }));
     setHasUnsavedChanges(true);
   };
@@ -224,10 +301,11 @@ function App() {
               onChange={(e) => handleSettingChange('language', e.target.value)}
               className='w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200'
             >
-              <option value='en'>English</option>
-              <option value='es'>Spanish</option>
-              <option value='fr'>French</option>
-              <option value='de'>German</option>
+              {langCodes.map((code) => (
+                <option key={code} value={code}>
+                  {code.toUpperCase()}
+                </option>
+              ))}
             </select>
             <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2'>
               <MdKeyboardArrowDown className='h-4 w-4 fill-current text-gray-500' />
@@ -240,19 +318,32 @@ function App() {
             htmlFor='voice'
             className='mb-1 block text-sm text-gray-700 dark:text-gray-300'
           >
-            Voice ID
+            Voice
           </label>
           <div className='relative'>
             <select
               id='voice'
-              value={currentSettings.voice}
-              onChange={(e) => handleSettingChange('voice', e.target.value)}
+              value={currentSettings.voice.voice_id}
+              onChange={(e) => {
+                const selectedVoice = voices.find(
+                  (v) => v.voice_id === e.target.value
+                );
+                if (selectedVoice) {
+                  handleSettingChange('voice', {
+                    voice_id: selectedVoice.voice_id,
+                    name: selectedVoice.name,
+                  });
+                }
+              }}
               className='w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200'
             >
-              <option value='voice1'>Voice 1 (Female)</option>
-              <option value='voice2'>Voice 2 (Male)</option>
-              <option value='voice3'>Voice 3 (Female)</option>
-              <option value='voice4'>Voice 4 (Male)</option>
+              {voices
+                .filter((voice) => voice.lang_code === currentSettings.language)
+                .map((voice) => (
+                  <option key={voice.voice_id} value={voice.voice_id}>
+                    {voice.name} ({voice.voice_id})
+                  </option>
+                ))}
             </select>
             <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2'>
               <MdKeyboardArrowDown className='h-4 w-4 fill-current text-gray-500' />
@@ -275,6 +366,7 @@ function App() {
             className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-200'
             placeholder='Enter your API key'
           />
+          {error && <p className='mt-1 text-sm text-red-500'>{error}</p>}
         </div>
 
         <div>
