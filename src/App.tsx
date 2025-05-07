@@ -65,7 +65,7 @@ function App() {
       {/* Main Content */}
       <div>
         {/* Read Aloud Option */}
-        <div className='flex items-center border-b border-gray-200 p-4 dark:border-neutral-700'>
+        <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
           <div className='flex flex-1 items-center'>
             <div className='mr-4'>
               <AiOutlinePlayCircle size={26} />
@@ -77,13 +77,13 @@ function App() {
               </p>
             </div>
           </div>
-          <div className='rounded bg-gray-100 px-2 py-1 text-sm text-gray-600'>
+          {/* <div className='rounded bg-gray-100 px-2 py-1 text-sm text-gray-600'>
             <span>⌘ R</span>
-          </div>
+          </div> */}
         </div>
 
         {/* Simplify & Summarise Option */}
-        <div className='flex items-center border-b border-gray-200 p-4 dark:border-neutral-700'>
+        <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
           <div className='flex flex-1 items-center'>
             <div className='mr-4'>
               <FiLoader size={26} />
@@ -98,13 +98,13 @@ function App() {
               </p>
             </div>
           </div>
-          <div className='rounded bg-gray-100 px-2 py-1 text-sm text-gray-600 dark:bg-gray-700 dark:text-white'>
+          {/* <div className='rounded bg-gray-100 px-2 py-1 text-sm text-gray-600 dark:bg-gray-700 dark:text-white'>
             <span>⌘ S</span>
-          </div>
+          </div> */}
         </div>
 
         {/* Converse Option */}
-        <div className='flex items-center border-b border-gray-200 p-4 dark:border-neutral-700'>
+        <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
           <div className='flex flex-1 items-center'>
             <div className='mr-4'>
               <FiMessageCircle size={26} />
@@ -116,16 +116,16 @@ function App() {
               </p>
             </div>
           </div>
-          <div className='rounded bg-gray-100 px-2 py-1 text-sm text-gray-600'>
+          {/* <div className='rounded bg-gray-100 px-2 py-1 text-sm text-gray-600'>
             <span>⌘ C</span>
-          </div>
+          </div> */}
         </div>
 
         {/* Activate Button */}
         <div className='flex flex-col items-center p-4'>
-          <button className='bg-themeContrast2 hover:bg-themeSecondary dark:bg-darkThemeSecondary dark:hover:bg-darkThemePrimary mb-2 w-full rounded-full px-6 py-3 text-base font-semibold text-white'>
+          {/* <button className='bg-themeContrast2 hover:bg-themeSecondary dark:bg-darkThemeSecondary dark:hover:bg-darkThemePrimary mb-2 w-full rounded-full px-6 py-3 text-base font-semibold text-white'>
             Activate
-          </button>
+          </button> */}
           <div className='text-center text-xs text-gray-500'>
             <span>Powered by Neuphonic</span>
           </div>
