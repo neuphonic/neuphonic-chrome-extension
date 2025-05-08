@@ -1,5 +1,5 @@
 import type { Voice } from '@neuphonic/neuphonic-js';
-import { createClient } from '@neuphonic/neuphonic-js';
+import { createClient, toWav } from '@neuphonic/neuphonic-js';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
@@ -186,8 +186,12 @@ const useHighlightedText = () => {
 function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
-  const [currentPage, setCurrentPage] = useState<Page>('settings');
-  const { voices, langCodes, error } = useNeuphonic();
+  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const { client: neuphonicClient, voices, langCodes, error } = useNeuphonic();
+  const [isReading, setIsReading] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
+    null
+  );
 
   // Add settings state
   const [currentSettings, setCurrentSettings] =
@@ -196,7 +200,9 @@ function App() {
     useState<Settings>(DEFAULT_SETTINGS);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Load settings from storage on mount
+  /**
+   * Load settings from storage on mount
+   */
   useEffect(() => {
     chrome.storage.local.get(['settings'], (result) => {
       if (result.settings) {
@@ -205,6 +211,72 @@ function App() {
       }
     });
   }, []);
+
+  /**
+   * Cleanup audio element on unmount
+   */
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = '';
+      }
+    };
+  }, [audioElement]);
+
+  /**
+   * Play highlighted text using the SSE endpoint. Cancel playback if already playing.
+   */
+  const handleReadAloud = async () => {
+    if (!highlightedText || !neuphonicClient || !currentSettings.voice.voice_id)
+      return;
+
+    // If already reading, stop the audio
+    if (isReading && audioElement) {
+      audioElement.pause();
+      audioElement.src = '';
+      setIsReading(false);
+      return;
+    }
+
+    try {
+      setIsReading(true);
+
+      // Create SSE connection
+      const sse = await neuphonicClient.tts.sse({
+        speed: 1.0,
+        lang_code: lastSavedSettings.language,
+        voice_id: lastSavedSettings.voice.voice_id,
+      });
+
+      // Send text and get response
+      const res = await sse.send(highlightedText);
+
+      // Convert to WAV
+      const wav = toWav(res.audio);
+
+      // Create blob URL
+      const blob = new Blob([wav], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+
+      // Create or update audio element
+      if (!audioElement) {
+        const audio = new Audio(url);
+        audio.onended = () => {
+          setIsReading(false);
+          URL.revokeObjectURL(url);
+        };
+        setAudioElement(audio);
+        await audio.play();
+      } else {
+        audioElement.src = url;
+        await audioElement.play();
+      }
+    } catch (error) {
+      console.error('Error reading aloud:', error);
+      setIsReading(false);
+    }
+  };
 
   // Handle settings changes
   const handleSettingChange = (
@@ -215,7 +287,9 @@ function App() {
     setHasUnsavedChanges(true);
   };
 
-  // Save settings to storage
+  /**
+   * When the "Save" button in "Settings" is pressed, save the changes to local storage.
+   */
   const handleSave = () => {
     chrome.storage.local.set({ settings: currentSettings }, () => {
       setLastSavedSettings(currentSettings);
@@ -223,7 +297,9 @@ function App() {
     });
   };
 
-  // Reset settings to last saved state
+  /**
+   * When the "Reset" button in "Settings" is pressed, revert active changes back to lastSavedSettings.
+   */
   const handleReset = () => {
     setCurrentSettings(lastSavedSettings);
     setHasUnsavedChanges(false);
@@ -249,15 +325,25 @@ function App() {
       transition={{ duration: 0.2 }}
     >
       {/* Read Aloud Option */}
-      <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
+      <div
+        className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'
+        onClick={handleReadAloud}
+      >
         <div className='flex flex-1 items-center'>
           <div className='mr-4'>
-            <AiOutlinePlayCircle size={26} />
+            <AiOutlinePlayCircle
+              size={26}
+              className={isReading ? 'animate-pulse' : ''}
+            />
           </div>
           <div className='flex-1 text-left'>
-            <h3 className='mb-1 text-base font-semibold'>Read Aloud</h3>
+            <h3 className='mb-1 text-base font-semibold'>
+              {isReading ? 'Reading...' : 'Read Aloud'}
+            </h3>
             <p className='text-sm font-light text-gray-700 dark:text-gray-300'>
-              Read aloud any highlighted text
+              {isReading
+                ? 'Press to cancel playback'
+                : 'Read aloud any highlighted text'}
             </p>
           </div>
         </div>
@@ -298,7 +384,7 @@ function App() {
 
       {/* Highlighted Text Preview */}
       {highlightedText && (
-        <div className='border-b border-gray-200 p-4 dark:border-neutral-700'>
+        <div className='border-b border-gray-200 p-4 text-center dark:border-neutral-700'>
           <p className='text-sm text-gray-700 italic dark:text-gray-300'>
             "{formatHighlightedText(highlightedText)}"
           </p>
