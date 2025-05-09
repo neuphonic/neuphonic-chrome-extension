@@ -60,22 +60,13 @@ See [Hello World Tutorial](https://developer.chrome.com/docs/extensions/get-star
 ### Project Structure
 ```
 neuphonic-chrome-extension/
-├── src/                    # Source code
+├── src/                   # Source code
 │   ├── App.tsx            # Main application component
-│   ├── hooks/             # Custom React hooks
-│   └── types/             # TypeScript type definitions
+│   ├── hooks.ts           # Custom React hooks
+|   ├── content.ts         # Custom script which runs in the context of the browser
+│   └── types.ts           # TypeScript type definitions
 ├── public/                # Static assets
 │   ├── manifest.json      # Extension manifest
-│   └── logo.png          # Extension icon
-└── build/                # Compiled extension (generated)
+│   └── logo.png           # Neuphonic logo
+└── build/                 # Compiled extension (generated)
 ```
-
-## Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
