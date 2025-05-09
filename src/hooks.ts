@@ -64,6 +64,7 @@ export function useNeuphonic() {
           chrome.storage.local.remove(['cachedVoices']);
           setVoices([]);
           setLangCodes([]);
+          setClient(null);
         }
       }
     };

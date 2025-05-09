@@ -19,6 +19,7 @@ function App() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null
   );
+  const [showApiKeyPrompt, setShowApiKeyPrompt] = useState(false);
 
   // Add settings state
   const [currentSettings, setCurrentSettings] =
@@ -26,6 +27,15 @@ function App() {
   const [lastSavedSettings, setLastSavedSettings] =
     useState<Settings>(DEFAULT_SETTINGS);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  /**
+   * Hide API key prompt when navigating away from home page
+   */
+  useEffect(() => {
+    if (currentPage !== 'home') {
+      setShowApiKeyPrompt(false);
+    }
+  }, [currentPage]);
 
   /**
    * Load settings from storage on mount
@@ -55,8 +65,14 @@ function App() {
    * Play highlighted text using the SSE endpoint. Cancel playback if already playing.
    */
   const handleReadAloud = async () => {
-    if (!highlightedText || !neuphonicClient || !currentSettings.voice.voice_id)
+    if (!neuphonicClient) {
+      setShowApiKeyPrompt(true);
       return;
+    }
+
+    if (!highlightedText) return;
+
+    if (!currentSettings.voice.voice_id) return;
 
     // If already reading, stop the audio
     if (isReading && audioElement) {
@@ -105,6 +121,14 @@ function App() {
     }
   };
 
+  const handleConverse = () => {
+    if (!neuphonicClient) {
+      setShowApiKeyPrompt(true);
+      return;
+    }
+    // TODO: Implement converse functionality
+  };
+
   // Handle settings changes
   const handleSettingChange = (
     key: keyof Settings,
@@ -151,6 +175,31 @@ function App() {
       exit={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.2 }}
     >
+      {/* API Key Prompt */}
+      <AnimatePresence>
+        {showApiKeyPrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className='border-b border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20'
+          >
+            <p className='text-sm text-red-700 dark:text-red-300'>
+              Please add your API key in settings to use this feature.
+            </p>
+            {/* <button
+              onClick={() => {
+                setCurrentPage('settings');
+                setShowApiKeyPrompt(false);
+              }}
+              className='mt-2 text-sm font-medium text-red-700 underline dark:text-red-300'
+            >
+              Go to Settings
+            </button> */}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Read Aloud Option */}
       <div
         className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'
@@ -196,7 +245,10 @@ function App() {
       </div> */}
 
       {/* Converse Option */}
-      <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
+      <div
+        className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'
+        onClick={handleConverse}
+      >
         <div className='flex flex-1 items-center'>
           <div className='mr-4'>
             <FiMessageCircle size={26} />
