@@ -3,7 +3,7 @@ import { toWav } from '@neuphonic/neuphonic-js';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
-import { FiLoader, FiMessageCircle } from 'react-icons/fi';
+import { FiMessageCircle } from 'react-icons/fi';
 import { IoArrowBack, IoClose, IoSettingsOutline } from 'react-icons/io5';
 import { MdKeyboardArrowDown, MdOpenInNew } from 'react-icons/md';
 import { DEFAULT_SETTINGS } from './consts';
@@ -176,8 +176,9 @@ function App() {
         </div>
       </div>
 
+      {/* Commented out because this is actually no possible yet with the agent. */}
       {/* Simplify & Summarise Option */}
-      <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
+      {/* <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
         <div className='flex flex-1 items-center'>
           <div className='mr-4'>
             <FiLoader size={26} />
@@ -192,7 +193,7 @@ function App() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Converse Option */}
       <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
