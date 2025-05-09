@@ -19,7 +19,10 @@ function App() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null
   );
-  const [showApiKeyPrompt, setShowApiKeyPrompt] = useState(false);
+  const [alert, setAlert] = useState<{
+    message: string;
+    level: 'info' | 'error';
+  } | null>(null);
 
   // Add settings state
   const [currentSettings, setCurrentSettings] =
@@ -29,13 +32,25 @@ function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   /**
-   * Hide API key prompt when navigating away from home page
+   * Hide alert when navigating away from home page
    */
   useEffect(() => {
     if (currentPage !== 'home') {
-      setShowApiKeyPrompt(false);
+      setAlert(null);
     }
   }, [currentPage]);
+
+  /**
+   * Auto-hide alert after 3 seconds
+   */
+  useEffect(() => {
+    if (alert) {
+      const timer = setTimeout(() => {
+        setAlert(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
 
   /**
    * Load settings from storage on mount
@@ -66,11 +81,20 @@ function App() {
    */
   const handleReadAloud = async () => {
     if (!neuphonicClient) {
-      setShowApiKeyPrompt(true);
+      setAlert({
+        message: 'Please add your API key in settings to use this feature',
+        level: 'error',
+      });
       return;
     }
 
-    if (!highlightedText) return;
+    if (!highlightedText) {
+      setAlert({
+        message: 'Please highlight some text first',
+        level: 'info',
+      });
+      return;
+    }
 
     if (!currentSettings.voice.voice_id) return;
 
@@ -123,7 +147,10 @@ function App() {
 
   const handleConverse = () => {
     if (!neuphonicClient) {
-      setShowApiKeyPrompt(true);
+      setAlert({
+        message: 'Please add your API key in settings to use this feature',
+        level: 'error',
+      });
       return;
     }
     // TODO: Implement converse functionality
@@ -175,27 +202,28 @@ function App() {
       exit={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.2 }}
     >
-      {/* API Key Prompt */}
+      {/* Alert Message */}
       <AnimatePresence>
-        {showApiKeyPrompt && (
+        {alert && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className='border-b border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20'
+            className={`border-b p-4 text-center ${
+              alert.level === 'error'
+                ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-900/20'
+                : 'border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-900/20'
+            }`}
           >
-            <p className='text-sm text-red-700 dark:text-red-300'>
-              Please add your API key in settings to use this feature.
-            </p>
-            {/* <button
-              onClick={() => {
-                setCurrentPage('settings');
-                setShowApiKeyPrompt(false);
-              }}
-              className='mt-2 text-sm font-medium text-red-700 underline dark:text-red-300'
+            <p
+              className={`text-sm ${
+                alert.level === 'error'
+                  ? 'text-red-700 dark:text-red-300'
+                  : 'text-yellow-700 dark:text-yellow-300'
+              }`}
             >
-              Go to Settings
-            </button> */}
+              {alert.message}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
