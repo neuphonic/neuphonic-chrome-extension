@@ -1,54 +1,15 @@
-# React + TypeScript + Vite
+# Neuphonic Chrome Extension
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A chrome extension that uses Neuphonic to read aloud highlighted text, or allows users to converse
+with a page using Neuphonic Agents.
 
-Currently, two official plugins are available:
+## Developing
+ 1. `git clone` the repo, then `cd neuphonic-chrome-extension`.
+ 2. `pnpm install` to install all dependencies.
+ 3. `pnpm build` to build the project. This will create the `/build` folder. Alternatively, you can
+   use `pnpm dev` to start a watchdog that builds incrementally on change.
+ 4. Navigate to Chrome -> `chrome://extensions/` -> Toggle "Developer Mode" on (top right) ->
+   "Load Unpacked" -> A file explorer will open. Select the `/build` folder.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+You now have the chrome extension installed.
+Navigate to any page, open the extension, add your API key, highlight any text and hit "Read Aloud".
