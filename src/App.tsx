@@ -153,6 +153,11 @@ function App() {
       });
       return;
     }
+
+    setAlert({
+      message: 'This feature has not been implemented yet',
+      level: 'error',
+    });
     // TODO: Implement converse functionality
   };
 
