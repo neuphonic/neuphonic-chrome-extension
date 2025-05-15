@@ -154,11 +154,40 @@ function App() {
       return;
     }
 
-    setAlert({
-      message: 'This feature has not been implemented yet',
-      level: 'error',
+    // Get all text from the current page
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentTab = tabs[0];
+      if (currentTab.id) {
+        chrome.scripting.executeScript<[], string>(
+          {
+            target: { tabId: currentTab.id },
+            func: (): string => {
+              return document.body.innerText;
+            },
+          },
+          (results) => {
+            if (chrome.runtime.lastError) {
+              console.error('Error:', chrome.runtime.lastError);
+              setAlert({
+                message: 'Failed to extract text from the page',
+                level: 'error',
+              });
+              return;
+            }
+
+            if (results && results[0] && results[0].result) {
+              const pageText = results[0].result;
+              console.log('Page text:', pageText);
+              // TODO: Implement the rest of the converse functionality with the extracted text
+              setAlert({
+                message: `Successfully extracted ${pageText.length} characters from the page`,
+                level: 'info',
+              });
+            }
+          }
+        );
+      }
     });
-    // TODO: Implement converse functionality
   };
 
   // Handle settings changes
