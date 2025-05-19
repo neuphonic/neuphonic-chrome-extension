@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
 // import { FiMessageCircle } from 'react-icons/fi';
+import { FaRegStopCircle } from 'react-icons/fa';
 import { IoArrowBack, IoClose, IoSettingsOutline } from 'react-icons/io5';
 import { MdKeyboardArrowDown, MdOpenInNew } from 'react-icons/md';
 import { DEFAULT_SETTINGS } from './consts';
@@ -16,6 +17,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const { client: neuphonicClient, voices, langCodes, error } = useNeuphonic();
   const [isReading, setIsReading] = useState(false);
+  const [ellipsisCount, setEllipsisCount] = useState(1);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null
   );
@@ -75,6 +77,21 @@ function App() {
       }
     };
   }, [audioElement]);
+
+  /**
+   * Animate ellipsis when reading
+   */
+  useEffect(() => {
+    let interval: number;
+    if (isReading) {
+      interval = setInterval(() => {
+        setEllipsisCount((prev) => (prev % 3) + 1);
+      }, 500);
+    } else {
+      setEllipsisCount(1);
+    }
+    return () => clearInterval(interval);
+  }, [isReading]);
 
   /**
    * Play highlighted text using the SSE endpoint. Cancel playback if already playing.
@@ -269,14 +286,18 @@ function App() {
       >
         <div className='flex flex-1 items-center'>
           <div className='mr-4'>
-            <AiOutlinePlayCircle
-              size={26}
-              className={isReading ? 'animate-pulse' : ''}
-            />
+            {isReading ? (
+              <FaRegStopCircle
+                size={26}
+                className='text-red-700 dark:text-red-300'
+              />
+            ) : (
+              <AiOutlinePlayCircle size={26} />
+            )}
           </div>
           <div className='flex-1 text-left'>
             <h3 className='mb-1 text-base font-semibold'>
-              {isReading ? 'Reading...' : 'Read Aloud'}
+              {isReading ? `Reading${'.'.repeat(ellipsisCount)}` : 'Read Aloud'}
             </h3>
             <p className='text-sm font-light text-gray-700 dark:text-gray-300'>
               {isReading
@@ -286,25 +307,6 @@ function App() {
           </div>
         </div>
       </div>
-
-      {/* Commented out because this is actually no possible yet with the agent. */}
-      {/* Simplify & Summarise Option */}
-      {/* <div className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'>
-        <div className='flex flex-1 items-center'>
-          <div className='mr-4'>
-            <FiLoader size={26} />
-          </div>
-          <div className='flex-1 text-left'>
-            <h3 className='mb-1 text-base font-semibold'>
-              Simplify & Summarise
-            </h3>
-            <p className='text-sm font-light text-gray-700 dark:text-gray-300'>
-              Intelligently simplify, summarise and speak aloud any highlighted
-              text
-            </p>
-          </div>
-        </div>
-      </div> */}
 
       {/* Converse Option */}
       {/* <div
