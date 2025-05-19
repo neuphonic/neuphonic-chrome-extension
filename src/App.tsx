@@ -3,7 +3,7 @@ import { toWav } from '@neuphonic/neuphonic-js';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
-import { FiMessageCircle } from 'react-icons/fi';
+// import { FiMessageCircle } from 'react-icons/fi';
 import { IoArrowBack, IoClose, IoSettingsOutline } from 'react-icons/io5';
 import { MdKeyboardArrowDown, MdOpenInNew } from 'react-icons/md';
 import { DEFAULT_SETTINGS } from './consts';
@@ -145,50 +145,50 @@ function App() {
     }
   };
 
-  const handleConverse = () => {
-    if (!neuphonicClient) {
-      setAlert({
-        message: 'Please add your API key in settings to use this feature',
-        level: 'error',
-      });
-      return;
-    }
+  // const handleConverse = () => {
+  //   if (!neuphonicClient) {
+  //     setAlert({
+  //       message: 'Please add your API key in settings to use this feature',
+  //       level: 'error',
+  //     });
+  //     return;
+  //   }
 
-    // Get all text from the current page
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const currentTab = tabs[0];
-      if (currentTab.id) {
-        chrome.scripting.executeScript<[], string>(
-          {
-            target: { tabId: currentTab.id },
-            func: (): string => {
-              return document.body.innerText;
-            },
-          },
-          (results) => {
-            if (chrome.runtime.lastError) {
-              console.error('Error:', chrome.runtime.lastError);
-              setAlert({
-                message: 'Failed to extract text from the page',
-                level: 'error',
-              });
-              return;
-            }
+  //   // Get all text from the current page
+  //   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  //     const currentTab = tabs[0];
+  //     if (currentTab.id) {
+  //       chrome.scripting.executeScript<[], string>(
+  //         {
+  //           target: { tabId: currentTab.id },
+  //           func: (): string => {
+  //             return document.body.innerText;
+  //           },
+  //         },
+  //         (results) => {
+  //           if (chrome.runtime.lastError) {
+  //             console.error('Error:', chrome.runtime.lastError);
+  //             setAlert({
+  //               message: 'Failed to extract text from the page',
+  //               level: 'error',
+  //             });
+  //             return;
+  //           }
 
-            if (results && results[0] && results[0].result) {
-              const pageText = results[0].result;
-              console.log('Page text:', pageText);
-              // TODO: Implement the rest of the converse functionality with the extracted text
-              setAlert({
-                message: `Successfully extracted ${pageText.length} characters from the page`,
-                level: 'info',
-              });
-            }
-          }
-        );
-      }
-    });
-  };
+  //           if (results && results[0] && results[0].result) {
+  //             const pageText = results[0].result;
+  //             console.log('Page text:', pageText);
+  //             // TODO: Implement the rest of the converse functionality with the extracted text
+  //             setAlert({
+  //               message: `Successfully extracted ${pageText.length} characters from the page`,
+  //               level: 'info',
+  //             });
+  //           }
+  //         }
+  //       );
+  //     }
+  //   });
+  // };
 
   // Handle settings changes
   const handleSettingChange = (
@@ -307,7 +307,7 @@ function App() {
       </div> */}
 
       {/* Converse Option */}
-      <div
+      {/* <div
         className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'
         onClick={handleConverse}
       >
@@ -322,7 +322,7 @@ function App() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Highlighted Text Preview */}
       {highlightedText && (
