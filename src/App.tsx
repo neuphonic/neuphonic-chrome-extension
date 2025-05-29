@@ -1,7 +1,6 @@
 import type { Voice } from '@neuphonic/neuphonic-js';
-import { toWav } from '@neuphonic/neuphonic-js';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
 // import { FiMessageCircle } from 'react-icons/fi';
 import { FaRegStopCircle } from 'react-icons/fa';
@@ -11,52 +10,76 @@ import { DEFAULT_SETTINGS } from './consts';
 import { useDarkMode, useHighlightedText, useNeuphonic } from './hooks';
 import type { Page, Settings } from './types';
 
+function base64ToArrayBuffer(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function pcmToAudioBuffer(
+  audioContext: AudioContext,
+  pcm: Uint8Array,
+  sampleRate: number
+): AudioBuffer {
+  const numSamples = pcm.length / 2;
+  const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+  const channel = buffer.getChannelData(0);
+  for (let i = 0; i < numSamples; i++) {
+    let sample = pcm[2 * i] | (pcm[2 * i + 1] << 8);
+    if (sample >= 0x8000) sample = sample - 0x10000;
+    channel[i] = sample / 32768;
+  }
+  return buffer;
+}
+
 function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const { client: neuphonicClient, voices, langCodes, error } = useNeuphonic();
+  const { voices, langCodes, error } = useNeuphonic();
   const [isReading, setIsReading] = useState(false);
   const [ellipsisCount, setEllipsisCount] = useState(1);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
-    null
-  );
   const [alert, setAlert] = useState<{
     message: string;
     level: 'info' | 'error';
   } | null>(null);
-
-  // Add settings state
   const [currentSettings, setCurrentSettings] =
     useState<Settings>(DEFAULT_SETTINGS);
   const [lastSavedSettings, setLastSavedSettings] =
     useState<Settings>(DEFAULT_SETTINGS);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  /**
-   * Hide alert when navigating away from home page
-   */
+  // Audio and playback refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const playbackTimeRef = useRef<number>(0);
+  const lastSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [audioElement] = useState<HTMLAudioElement | null>(null); // not used, but kept for cleanup compatibility
+
+  // WebSocket status
+  const [_, setWsStatus] = useState<'closed' | 'connecting' | 'open' | 'error'>(
+    'closed'
+  );
+
+  // Hide alert when navigating away from home page
   useEffect(() => {
-    if (currentPage !== 'home') {
-      setAlert(null);
-    }
+    if (currentPage !== 'home') setAlert(null);
   }, [currentPage]);
 
-  /**
-   * Auto-hide alert after 3 seconds
-   */
+  // Auto-hide alert after 3 seconds
   useEffect(() => {
     if (alert) {
-      const timer = setTimeout(() => {
-        setAlert(null);
-      }, 3000);
+      const timer = setTimeout(() => setAlert(null), 3000);
       return () => clearTimeout(timer);
     }
   }, [alert]);
 
-  /**
-   * Load settings from storage on mount
-   */
+  // Load settings from storage on mount
   useEffect(() => {
     chrome.storage.local.get(['settings'], (result) => {
       if (result.settings) {
@@ -66,25 +89,36 @@ function App() {
     });
   }, []);
 
-  /**
-   * Cleanup audio element on unmount
-   */
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (audioElement) {
         audioElement.pause();
         audioElement.src = '';
       }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      playbackTimeRef.current = 0;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (lastSourceRef.current) {
+        try {
+          lastSourceRef.current.stop();
+        } catch {}
+        lastSourceRef.current = null;
+      }
     };
   }, [audioElement]);
 
-  /**
-   * Animate ellipsis when reading
-   */
+  // Animate ellipsis when reading
   useEffect(() => {
     let interval: number;
     if (isReading) {
-      interval = setInterval(() => {
+      interval = window.setInterval(() => {
         setEllipsisCount((prev) => (prev % 3) + 1);
       }, 500);
     } else {
@@ -93,18 +127,19 @@ function App() {
     return () => clearInterval(interval);
   }, [isReading]);
 
-  /**
-   * Play highlighted text using the SSE endpoint. Cancel playback if already playing.
-   */
+  // Handle reading aloud
   const handleReadAloud = async () => {
-    if (!neuphonicClient) {
+    if (
+      !lastSavedSettings.voice.voice_id ||
+      !lastSavedSettings.language ||
+      !lastSavedSettings.apiKey
+    ) {
       setAlert({
-        message: 'Please add your API key in settings to use this feature',
+        message: 'Please configure your settings first.',
         level: 'error',
       });
       return;
     }
-
     if (!highlightedText) {
       setAlert({
         message: 'Please highlight some text first',
@@ -112,100 +147,106 @@ function App() {
       });
       return;
     }
-
-    if (!currentSettings.voice.voice_id) return;
-
-    // If already reading, stop the audio
-    if (isReading && audioElement) {
-      audioElement.pause();
-      audioElement.src = '';
+    // If already reading, stop the audio and reset everything
+    if (isReading) {
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      playbackTimeRef.current = 0;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (lastSourceRef.current) {
+        try {
+          lastSourceRef.current.stop();
+        } catch {}
+        lastSourceRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
       setIsReading(false);
+      setWsStatus('closed');
       return;
     }
-
     try {
       setIsReading(true);
-
-      // Create SSE connection
-      const sse = await neuphonicClient.tts.sse({
-        speed: 1.0,
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      audioContextRef.current = new window.AudioContext();
+      playbackTimeRef.current = audioContextRef.current.currentTime;
+      // Create a new WebSocket for this play
+      const params = new URLSearchParams({
+        speed: '1.0',
         lang_code: lastSavedSettings.language,
         voice_id: lastSavedSettings.voice.voice_id,
+        api_key: lastSavedSettings.apiKey,
       });
-
-      // Send text and get response
-      const res = await sse.send(highlightedText);
-
-      // Convert to WAV
-      const wav = toWav(res.audio);
-
-      // Create blob URL
-      const blob = new Blob([wav], { type: 'audio/wav' });
-      const url = URL.createObjectURL(blob);
-
-      // Create or update audio element
-      if (!audioElement) {
-        const audio = new Audio(url);
-        audio.onended = () => {
-          setIsReading(false);
-          URL.revokeObjectURL(url);
-        };
-        setAudioElement(audio);
-        await audio.play();
-      } else {
-        audioElement.src = url;
-        await audioElement.play();
-      }
+      const wsUrl = `wss://api.neuphonic.com/speak/en?${params}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+      setWsStatus('connecting');
+      ws.onopen = () => {
+        setWsStatus('open');
+        ws.send(highlightedText);
+        ws.send('<STOP>');
+      };
+      ws.onclose = () => {
+        setWsStatus('closed');
+      };
+      ws.onerror = () => {
+        setWsStatus('error');
+      };
+      ws.onmessage = (message: MessageEvent<string>) => {
+        if (!audioContextRef.current) return;
+        try {
+          const data = JSON.parse(message.data);
+          if (!data || !data.data || !data.data.audio) return;
+          const audioData = base64ToArrayBuffer(data.data.audio);
+          const sampleRate = data.data.sampling_rate || 22050;
+          const buffer = pcmToAudioBuffer(
+            audioContextRef.current,
+            audioData,
+            sampleRate
+          );
+          const source = audioContextRef.current.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioContextRef.current.destination);
+          const startTime = Math.max(
+            audioContextRef.current.currentTime,
+            playbackTimeRef.current
+          );
+          source.start(startTime);
+          playbackTimeRef.current = startTime + buffer.duration;
+          if (lastSourceRef.current) {
+            lastSourceRef.current.onended = null;
+          }
+          lastSourceRef.current = source;
+          source.onended = () => {
+            setIsReading(false);
+          };
+        } catch (e) {
+          // Ignore parse errors
+        }
+      };
     } catch (error) {
-      console.error('Error reading aloud:', error);
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error('Error reading aloud:', error);
+      }
       setIsReading(false);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setWsStatus('closed');
+    } finally {
+      abortControllerRef.current = null;
     }
   };
-
-  // const handleConverse = () => {
-  //   if (!neuphonicClient) {
-  //     setAlert({
-  //       message: 'Please add your API key in settings to use this feature',
-  //       level: 'error',
-  //     });
-  //     return;
-  //   }
-
-  //   // Get all text from the current page
-  //   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  //     const currentTab = tabs[0];
-  //     if (currentTab.id) {
-  //       chrome.scripting.executeScript<[], string>(
-  //         {
-  //           target: { tabId: currentTab.id },
-  //           func: (): string => {
-  //             return document.body.innerText;
-  //           },
-  //         },
-  //         (results) => {
-  //           if (chrome.runtime.lastError) {
-  //             console.error('Error:', chrome.runtime.lastError);
-  //             setAlert({
-  //               message: 'Failed to extract text from the page',
-  //               level: 'error',
-  //             });
-  //             return;
-  //           }
-
-  //           if (results && results[0] && results[0].result) {
-  //             const pageText = results[0].result;
-  //             console.log('Page text:', pageText);
-  //             // TODO: Implement the rest of the converse functionality with the extracted text
-  //             setAlert({
-  //               message: `Successfully extracted ${pageText.length} characters from the page`,
-  //               level: 'info',
-  //             });
-  //           }
-  //         }
-  //       );
-  //     }
-  //   });
-  // };
 
   // Handle settings changes
   const handleSettingChange = (
@@ -216,9 +257,7 @@ function App() {
     setHasUnsavedChanges(true);
   };
 
-  /**
-   * When the "Save" button in "Settings" is pressed, save the changes to local storage.
-   */
+  // Save settings
   const handleSave = () => {
     chrome.storage.local.set({ settings: currentSettings }, () => {
       setLastSavedSettings(currentSettings);
@@ -226,22 +265,18 @@ function App() {
     });
   };
 
-  /**
-   * When the "Reset" button in "Settings" is pressed, revert active changes back to lastSavedSettings.
-   */
+  // Reset settings
   const handleReset = () => {
     setCurrentSettings(lastSavedSettings);
     setHasUnsavedChanges(false);
   };
 
-  // Function to format highlighted text for display
+  // Format highlighted text for display
   const formatHighlightedText = (text: string) => {
     if (!text) return '';
     if (text.length <= 50) return text;
-
     const words = text.split(' ');
     if (words.length <= 8) return text;
-
     return `${words.slice(0, 3).join(' ')} ... ${words.slice(-3).join(' ')}`;
   };
 
@@ -307,24 +342,6 @@ function App() {
           </div>
         </div>
       </div>
-
-      {/* Converse Option */}
-      {/* <div
-        className='flex cursor-pointer items-center border-b border-gray-200 p-4 hover:bg-gray-200 dark:border-neutral-700 dark:hover:bg-gray-700'
-        onClick={handleConverse}
-      >
-        <div className='flex flex-1 items-center'>
-          <div className='mr-4'>
-            <FiMessageCircle size={26} />
-          </div>
-          <div className='flex-1 text-left'>
-            <h3 className='mb-1 text-base font-semibold'>Converse</h3>
-            <p className='text-sm font-light text-gray-700 dark:text-gray-300'>
-              Converse with this page
-            </p>
-          </div>
-        </div>
-      </div> */}
 
       {/* Highlighted Text Preview */}
       {highlightedText && (
