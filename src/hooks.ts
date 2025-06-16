@@ -4,6 +4,7 @@
 
 import type { Voice } from '@neuphonic/neuphonic-js';
 import { createClient } from '@neuphonic/neuphonic-js';
+import { createBrowserClient } from '@neuphonic/neuphonic-js/browser';
 import { useEffect, useState } from 'react';
 
 /**
@@ -14,6 +15,9 @@ export function useNeuphonic() {
   const [client, setClient] = useState<ReturnType<typeof createClient> | null>(
     null
   );
+  const [browserClient, setBrowserClient] = useState<ReturnType<
+    typeof createBrowserClient
+  > | null>(null);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [langCodes, setLangCodes] = useState<string[]>([]);
   const [apiKey, setApiKey] = useState<string>('');
@@ -65,6 +69,7 @@ export function useNeuphonic() {
           setVoices([]);
           setLangCodes([]);
           setClient(null);
+          setBrowserClient(null);
         }
       }
     };
@@ -85,6 +90,8 @@ export function useNeuphonic() {
 
     const newClient = createClient({ apiKey });
     setClient(newClient);
+    const newBroserClient = createBrowserClient({ apiKey });
+    setBrowserClient(newBroserClient);
 
     const fetchVoices = async () => {
       try {
@@ -103,7 +110,7 @@ export function useNeuphonic() {
     fetchVoices();
   }, [apiKey]);
 
-  return { client, voices, langCodes, error };
+  return { client, browserClient, voices, langCodes, error };
 }
 
 export function useDarkMode() {

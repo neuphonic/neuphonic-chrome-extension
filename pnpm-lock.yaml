@@ -12,8 +12,8 @@ importers:
         specifier: ^5.2.5
         version: 5.2.5
       '@neuphonic/neuphonic-js':
-        specifier: ^0.7.4
-        version: 0.7.4
+        specifier: ^0.9.2
+        version: 0.9.2
       motion:
         specifier: ^12.10.1
         version: 12.10.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -393,8 +393,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
-  '@neuphonic/neuphonic-js@0.7.4':
-    resolution: {integrity: sha512-P5oJMIhHoJpysDXBF48vYZusRjwjPv5c9VFHofJrPQ+qzp46SE3cJrNz3BEISM1OubwRk3b2Ot89tcA3BJTnbA==}
+  '@neuphonic/neuphonic-js@0.9.2':
+    resolution: {integrity: sha512-wVC0t1t+8p5wjx3Se+3Oh0+x+OjJ+PdQFXvd+hNEYz9Oecmo7gz4HhtBO4+xWECGGD26ZzAc4ZyDmgUbaZb+kg==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -1785,7 +1785,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@neuphonic/neuphonic-js@0.7.4':
+  '@neuphonic/neuphonic-js@0.9.2':
     dependencies:
       dotenv: 16.5.0
       eventsource: 3.0.6
