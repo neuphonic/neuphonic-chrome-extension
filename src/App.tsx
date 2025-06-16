@@ -1,8 +1,8 @@
 import type { Voice } from '@neuphonic/neuphonic-js';
+import type { Player } from '@neuphonic/neuphonic-js/browser';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { AiOutlinePlayCircle } from 'react-icons/ai';
-// import { FiMessageCircle } from 'react-icons/fi';
 import { FaRegStopCircle } from 'react-icons/fa';
 import { IoArrowBack, IoClose, IoSettingsOutline } from 'react-icons/io5';
 import { MdKeyboardArrowDown, MdOpenInNew } from 'react-icons/md';
@@ -10,37 +10,11 @@ import { DEFAULT_SETTINGS } from './consts';
 import { useDarkMode, useHighlightedText, useNeuphonic } from './hooks';
 import type { Page, Settings } from './types';
 
-function base64ToArrayBuffer(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
-function pcmToAudioBuffer(
-  audioContext: AudioContext,
-  pcm: Uint8Array,
-  sampleRate: number
-): AudioBuffer {
-  const numSamples = pcm.length / 2;
-  const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
-  const channel = buffer.getChannelData(0);
-  for (let i = 0; i < numSamples; i++) {
-    let sample = pcm[2 * i] | (pcm[2 * i + 1] << 8);
-    if (sample >= 0x8000) sample = sample - 0x10000;
-    channel[i] = sample / 32768;
-  }
-  return buffer;
-}
-
 function App() {
   useDarkMode();
   const highlightedText = useHighlightedText();
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const { voices, langCodes, error } = useNeuphonic();
+  const { browserClient, voices, langCodes, error } = useNeuphonic();
   const [isReading, setIsReading] = useState(false);
   const [ellipsisCount, setEllipsisCount] = useState(1);
   const [alert, setAlert] = useState<{
@@ -54,17 +28,7 @@ function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Audio and playback refs
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const playbackTimeRef = useRef<number>(0);
-  const lastSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const [audioElement] = useState<HTMLAudioElement | null>(null); // not used, but kept for cleanup compatibility
-
-  // WebSocket status
-  const [_, setWsStatus] = useState<'closed' | 'connecting' | 'open' | 'error'>(
-    'closed'
-  );
+  const playerRef = useRef<Player | null>(null);
 
   // Hide alert when navigating away from home page
   useEffect(() => {
@@ -89,31 +53,6 @@ function App() {
     });
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.src = '';
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-      playbackTimeRef.current = 0;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      if (lastSourceRef.current) {
-        try {
-          lastSourceRef.current.stop();
-        } catch {}
-        lastSourceRef.current = null;
-      }
-    };
-  }, [audioElement]);
-
   // Animate ellipsis when reading
   useEffect(() => {
     let interval: number;
@@ -127,8 +66,19 @@ function App() {
     return () => clearInterval(interval);
   }, [isReading]);
 
+  // Close player on unmount
+  useEffect(() => {
+    playerRef.current?.close();
+  }, []);
+
   // Handle reading aloud
   const handleReadAloud = async () => {
+    console.log(2);
+
+    if (!browserClient) {
+      return;
+    }
+
     if (
       !lastSavedSettings.voice.voice_id ||
       !lastSavedSettings.language ||
@@ -140,6 +90,7 @@ function App() {
       });
       return;
     }
+
     if (!highlightedText) {
       setAlert({
         message: 'Please highlight some text first',
@@ -147,104 +98,28 @@ function App() {
       });
       return;
     }
-    // If already reading, stop the audio and reset everything
-    if (isReading) {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
+
+    if (!playerRef.current) {
+      try {
+        playerRef.current = await browserClient.tts.player({
+          lang_code: lastSavedSettings.language,
+          voice_id: lastSavedSettings.voice.voice_id,
+        });
+      } catch (err) {
+        console.error('Error while connecting', err);
+        return;
       }
-      playbackTimeRef.current = 0;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      if (lastSourceRef.current) {
-        try {
-          lastSourceRef.current.stop();
-        } catch {}
-        lastSourceRef.current = null;
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setIsReading(false);
-      setWsStatus('closed');
-      return;
     }
-    try {
-      setIsReading(true);
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      audioContextRef.current = new window.AudioContext();
-      playbackTimeRef.current = audioContextRef.current.currentTime;
-      // Create a new WebSocket for this play
-      const params = new URLSearchParams({
-        speed: '1.0',
-        lang_code: lastSavedSettings.language,
-        voice_id: lastSavedSettings.voice.voice_id,
-        api_key: lastSavedSettings.apiKey,
-      });
-      const wsUrl = `wss://api.neuphonic.com/speak/en?${params}`;
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-      setWsStatus('connecting');
-      ws.onopen = () => {
-        setWsStatus('open');
-        ws.send(highlightedText);
-        ws.send('<STOP>');
-      };
-      ws.onclose = () => {
-        setWsStatus('closed');
-      };
-      ws.onerror = () => {
-        setWsStatus('error');
-      };
-      ws.onmessage = (message: MessageEvent<string>) => {
-        if (!audioContextRef.current) return;
-        try {
-          const data = JSON.parse(message.data);
-          if (!data || !data.data || !data.data.audio) return;
-          const audioData = base64ToArrayBuffer(data.data.audio);
-          const sampleRate = data.data.sampling_rate || 22050;
-          const buffer = pcmToAudioBuffer(
-            audioContextRef.current,
-            audioData,
-            sampleRate
-          );
-          const source = audioContextRef.current.createBufferSource();
-          source.buffer = buffer;
-          source.connect(audioContextRef.current.destination);
-          const startTime = Math.max(
-            audioContextRef.current.currentTime,
-            playbackTimeRef.current
-          );
-          source.start(startTime);
-          playbackTimeRef.current = startTime + buffer.duration;
-          if (lastSourceRef.current) {
-            lastSourceRef.current.onended = null;
-          }
-          lastSourceRef.current = source;
-          source.onended = () => {
-            setIsReading(false);
-          };
-        } catch (e) {
-          // Ignore parse errors
-        }
-      };
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        console.error('Error reading aloud:', error);
-      }
+
+    if (isReading) {
+      playerRef.current.stop();
       setIsReading(false);
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setWsStatus('closed');
-    } finally {
-      abortControllerRef.current = null;
+    } else {
+      setIsReading(true);
+
+      await playerRef.current.play(highlightedText);
+
+      setIsReading(false);
     }
   };
 
