@@ -3,6 +3,9 @@
   "name": "Neuphonic Reader",
   "version": "1.0.0",
   "description": "A Screen Reader and other utilities powered by Neuphonic Text-To-Speech",
+  "icons": {
+    "128": "logo.png"
+  },
   "action": {
     "default_popup": "index.html",
     "default_icon": "logo.png"
